@@ -8,17 +8,27 @@ IFS=$(echo -en "\n\b")
 
 ### formating function to output numbers in right format.
 function form_out {
-    fl=$(echo $1 | grep "^[0-9]*\.[0-9]*$" | wc -l )
-    if [ $fl -ne 0 ]; then # means float
-        printf "%f:" "$1" >> $2.tmp
-    else
-        fl=$(echo $1 | grep "^[0-9]*\.[0-9]*" | wc -l )
-        if [ $fl -ne 0 ]; then #mean exp
-            printf "%E:" "$1" >> $2.tmp
+## only number, . and e+ allowed
+    case $1 in
+        ''|*[!0-9.e+]*) err=1 ;;
+            *) err=0 ;;
+    esac
+    if [ $err -eq 0 ];then
+        fl=$(echo $1 | grep "^[0-9]*\.[0-9]*$" | wc -l )
+        if [ $fl -ne 0 ]; then # means float as end of line $
+            printf "%f:" "$1" >> $2.tmp
         else
-            printf "%d:" "$1" >> $2.tmp
+            fl=$(echo $1 | grep "^[0-9]*\.[0-9]*" | wc -l )
+            if [ $fl -ne 0 ]; then #mean exp
+                printf "%E:" "$1" >> $2.tmp
+            else
+                printf "%d:" "$1" >> $2.tmp
+            fi
         fi
+    else
+        echo $1 not a number, not written to $2.tmp
     fi
+
 }
 
 
@@ -28,7 +38,7 @@ function form_out {
 folders=$(find . -type d -maxdepth 1 -mindepth 1)
 
 for folder in $folders; do   #for folder in "T0"; do
-    echo $folder
+echo $folder
     ftmp=$folder/tmp
     mkdir -p $ftmp
 
@@ -47,7 +57,11 @@ for folder in $folders; do   #for folder in "T0"; do
                 printf "%i:" "$nr" >> $ftmp/$name_trim.tmp
             fi
             sum1=$(cat $i | awk '{sum+=$1} END {print sum}')
-            form_out $sum1 $ftmp/$name_trim
+            case $sum1 in
+                ''|*[!0-9.e+]*) echo sum in $i not a number, not written to $ftmp/$name_trim ;;
+                    *) form_out $sum1 $ftmp/$name_trim ;;
+            esac
+
         done
     done
 
@@ -61,7 +75,11 @@ for folder in $folders; do   #for folder in "T0"; do
             name=$(basename $i)
             name_trim="${name%.ome*}"
             a5=$(awk -F"," 'FNR == 5 {print $1}' $i)
-            form_out $a5 $ftmp/$name_trim
+            case $a5 in
+                ''|*[!0-9.e+]*) echo a5 in $i not a number, not written to $ftmp/$name_trim ;;
+                *) form_out $a5 $ftmp/$name_trim;;
+            esac
+
         done
     done
 
@@ -82,8 +100,7 @@ for folder in $folders; do   #for folder in "T0"; do
         else
             echo $i >> errors_${filename}.tab
             echo $nrE >> errors_${filename}.tab
-            cat $i >> errors_${filename}.tab
-            printf "\n" >> errors_${filename}.tab
+            awk -F':' 'BEGIN {OFS = "\t"}{$1=$1}'1 $i >> errors_${filename}.tab
         fi
     done
     rm -rf $ftmp
