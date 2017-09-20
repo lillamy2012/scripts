@@ -37,7 +37,8 @@ function form_out {
 
 folders=$(find . -type d -maxdepth 1 -mindepth 1)
 
-for folder in $folders; do   #for folder in "T0"; do
+for folder in $folders; do
+#for folder in "20170823_2d_rec_HS"; do
 echo $folder
     ftmp=$folder/tmp
     mkdir -p $ftmp
@@ -46,20 +47,23 @@ echo $folder
 
     sub="CC"
 
-    for file in "ome_Volume.csv" "ome_Intensity_Sum_Ch=1.csv"; do
+    for file in "_Volume.csv" "_Intensity_Sum_Ch=1.csv"; do
         files=$(find $folder/$sub -name *$file)
         for i in $files; do
             name=$(basename $i)
             name_trim="${name%.ome*}"
-            if [ "$file" = "ome_Volume.csv" ]; then
-                printf "%s:" "$name_trim" > $ftmp/$name_trim.tmp
+            name_trim2="${name_trim%_Volume*}"
+            name_trim3="${name_trim2%_Intensity*}"
+#echo $name_trim3
+            if [ "$file" = "_Volume.csv" ]; then
+                printf "%s:" "$name_trim3" > $ftmp/$name_trim3.tmp
                 nr=$(wc -l $i| awk '{print $1-4}')
-                printf "%i:" "$nr" >> $ftmp/$name_trim.tmp
+                printf "%i:" "$nr" >> $ftmp/$name_trim3.tmp
             fi
             sum1=$(cat $i | awk '{sum+=$1} END {print sum}')
             case $sum1 in
-                ''|*[!0-9.e+]*) echo sum in $i not a number, not written to $ftmp/$name_trim ;;
-                    *) form_out $sum1 $ftmp/$name_trim ;;
+                ''|*[!0-9.e+]*) echo sum in $i not a number, not written to $ftmp/$name_trim3 ;;
+                    *) form_out $sum1 $ftmp/$name_trim3 ;;
             esac
 
         done
@@ -69,15 +73,18 @@ echo $folder
 
     sub="Nuc"
 
-    for file in "ome_Volume.csv" "ome_Intensity_Sum_Ch=1.csv" "ome_Sphericity.csv" ; do
+    for file in "_Volume.csv" "_Intensity_Sum_Ch=1.csv" "_Sphericity.csv" ; do
         files=$(find $folder/$sub -name *$file)
         for i in $files; do
             name=$(basename $i)
             name_trim="${name%.ome*}"
+            name_trim2="${name_trim%_Volume*}"
+            name_trim3="${name_trim2%_Intensity_Sum_Ch=1.csv*}"
+            name_trim4="${name_trim3%_Sphericity.csv*}"
             a5=$(awk -F"," 'FNR == 5 {print $1}' $i)
             case $a5 in
-                ''|*[!0-9.e+]*) echo a5 in $i not a number, not written to $ftmp/$name_trim ;;
-                *) form_out $a5 $ftmp/$name_trim;;
+                ''|*[!0-9.e+]*) echo a5 in $i not a number, not written to $ftmp/$name_trim4 ;;
+                *) form_out $a5 $ftmp/$name_trim4;;
             esac
 
         done
@@ -95,6 +102,7 @@ echo $folder
     for i in $tmps; do
         sed -i.bak 's/:$//' $i
         nrE=$(awk -F':' '{print NF}' $i )  #nrE=$(awk -F $'\t' 'BEGIN {OFS = "\t"}{print NF}' $i | sort -nu | tail -n 1)
+#echo $nrE
         if [ "$nrE" -eq 7 ]; then
             awk -F':' 'BEGIN {OFS = "\t"}{$8=$3/$5}{$9=$4/$6}'1 $i >> ${filename}.tab
         else
